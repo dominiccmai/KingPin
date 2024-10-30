@@ -1,8 +1,8 @@
 # KingPin
 
-**KingPin** is a high-performance chess engine designed for efficiency and scalability. Leveraging advanced algorithms for move evaluation and multithreading, KingPin provides a competitive and customizable AI capable of handling complex chess scenarios. Built with an extensible framework, KingPin is ideal for those interested in chess engine development, AI algorithms, and game optimization.
+**KingPin** is a high-performance chess engine designed for efficiency and scalability. Leveraging advanced algorithms for move evaluation and multithreading, KingPin provides a competitive and customizable AI capable of handling complex chess scenarios.
 
-## Key Feature
+## Key Features
   
 - **Alpha-Beta Pruning with Move Ordering**: Implements an optimized Alpha-Beta pruning algorithm that improves search efficiency by focusing on promising moves first, drastically reducing the search space.
 
