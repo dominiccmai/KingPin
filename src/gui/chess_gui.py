@@ -66,7 +66,9 @@ class ChessGUI:
         pieces = {}
         for color in ['white', 'black']:
             for piece in ['pawn', 'rook', 'knight', 'bishop', 'queen', 'king']:
-                image_path = os.path.join('assets', 'pieces', f'{color}_{piece}.png')
+                image_path = os.path.join(
+                    self.base_path, 'assets', 'pieces', f'{color}_{piece}.png'
+                )
                 image = pygame.image.load(image_path)
                 image = pygame.transform.scale(image, (self.square_size, self.square_size))
                 pieces[f'{color}_{piece}'] = image

@@ -190,8 +190,24 @@ class ChessBoard:
     
     def copy(self):
         new_board = ChessBoard()
-        new_board.board = [[self.board[row][col].copy() if self.board[row][col] else None for col in range(8)] for row in range(8)]
+
+        new_board.board = [
+            [
+                self.board[row][col].copy() if self.board[row][col] else None
+                for col in range(8)
+            ]
+            for row in range(8)
+        ]
+
         new_board.game_state = copy.deepcopy(self.game_state)
-        new_board.move_validator = copy.deepcopy(self.move_validator)
-        new_board.game_rules = copy.deepcopy(self.game_rules)
+        
+        from src.board.move_validator import MoveValidator
+        from src.board.game_rules import GameRules
+        new_board.move_validator = MoveValidator(new_board)
+        new_board.game_rules = GameRules(new_board)
+
+        new_board.move_history = copy.deepcopy(self.move_history)
+        new_board.last_move = copy.deepcopy(self.last_move)
+        new_board.last_double_pawn_move = copy.deepcopy(self.last_double_pawn_move)
+
         return new_board

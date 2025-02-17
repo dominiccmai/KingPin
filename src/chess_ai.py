@@ -283,6 +283,9 @@ class ChessAI:
                 if not captured_piece and board.last_double_pawn_move:
                     if board.last_double_pawn_move[1] == end[1]:  # Valid en passant capture
                         score += 15
+
+            import random
+            score += random.uniform(-0.1, 0.1)
             
             return score
         
