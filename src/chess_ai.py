@@ -3,6 +3,8 @@ import copy
 import random
 import time
 
+MATE_VALUE = 100000
+
 class ChessAI:
     def __init__(self, color):
         self.color = color
@@ -96,6 +98,8 @@ class ChessAI:
         self.max_time = 0
         self.nodes = 0
 
+        self.transposition_table = {}
+
     def get_best_move(self, board, max_time=3):
         self.start_time = time.time()
         self.max_time = max_time
@@ -121,7 +125,10 @@ class ChessAI:
                 if self.is_time_up():
                     break
                 
-                current_move = self.minimax(board, depth, float('-inf'), float('inf'), self.color == 'white', True)
+                search_board = board.copy()
+
+                current_move = self.minimax(search_board, depth, float('-inf'), float('inf'), self.color == 'white', True)
+
                 if current_move is not None and not self.is_time_up():
                     # Test if move is valid before accepting it
                     test_board = board.copy()
@@ -154,6 +161,12 @@ class ChessAI:
         if self.nodes % 1000 == 0:
             self.check_time()
 
+        board_key = self.board_to_string(board)
+        tt_key = (board_key, depth, alpha, beta, maximizing_player)
+        if tt_key in self.transposition_table:
+            cached_value, cached_move = self.transposition_table[tt_key]
+            return cached_move if root else cached_value
+
         if depth == 0:
             return self.quiescence(board, alpha, beta, maximizing_player, 0)
 
@@ -167,12 +180,11 @@ class ChessAI:
         best_value = float('-inf') if maximizing_player else float('inf')
 
         for move in moves:
-            test_board = board.copy()
-            if not test_board.move_piece(move[0], move[1], log=False):
-                continue
+            
+            move_info = board.push_move_in_place(move[0], move[1])
+            eval = self.minimax(board, depth - 1, alpha, beta, not maximizing_player)
 
-            new_board = self.make_move(board, move)
-            eval = self.minimax(new_board, depth - 1, alpha, beta, not maximizing_player)
+            board.pop_move_in_place(move_info)
             
             if maximizing_player:
                 if eval > best_value:
@@ -191,6 +203,8 @@ class ChessAI:
                 elif not maximizing_player and eval <= alpha:
                     self.move_history[move] = self.move_history.get(move, 0) + depth * depth
                 break
+        
+        self.transposition_table[tt_key] = (best_value, best_move)
 
         result = best_move if root else best_value
         return result
@@ -199,9 +213,9 @@ class ChessAI:
 
         self.nodes += 1
         if depth > 3 or self.is_time_up():
-            return self.evaluate_board(board)
+            return self.evaluate_board(board, depth)
         
-        stand_pat = self.evaluate_board(board)
+        stand_pat = self.evaluate_board(board, depth)
         
         if maximizing_player:
             if stand_pat >= beta:
@@ -212,29 +226,46 @@ class ChessAI:
                 return alpha
             beta = min(beta, stand_pat)
 
-        moves = self.get_ordered_moves(board, maximizing_player, captures_only=True)
+        moves = self.get_ordered_moves(board, maximizing_player, captures_only=False)
+
+        filtered_moves = []
+        for move in moves:
+            captured_piece = board.get_piece(move[1])
+            if captured_piece:
+                filtered_moves.append(move)
+            else:
+                # Temporarily push to see if it gives check
+                move_info = board.push_move_in_place(move[0], move[1])
+                opponent = 'black' if maximizing_player else 'white'
+                if board.game_rules.is_in_check(opponent):
+                    filtered_moves.append(move)
+                board.pop_move_in_place(move_info)
 
         if maximizing_player:
             max_eval = stand_pat
-            for move in moves:
+            for move in filtered_moves:
                 if self.is_time_up():
                     break
-                new_board = self.make_move(board, move)
-                eval = self.quiescence(new_board, alpha, beta, False, depth + 1)
-                max_eval = max(max_eval, eval)
-                alpha = max(alpha, eval)
+                move_info = board.push_move_in_place(move[0], move[1])
+                eval_ = self.quiescence(board, alpha, beta, False, depth + 1)
+                board.pop_move_in_place(move_info)
+
+                max_eval = max(max_eval, eval_)
+                alpha = max(alpha, eval_)
                 if beta <= alpha:
                     break
             return max_eval
         else:
             min_eval = stand_pat
-            for move in moves:
+            for move in filtered_moves:
                 if self.is_time_up():
                     break
-                new_board = self.make_move(board, move)
-                eval = self.quiescence(new_board, alpha, beta, True, depth + 1)
-                min_eval = min(min_eval, eval)
-                beta = min(beta, eval)
+                move_info = board.push_move_in_place(move[0], move[1])
+                eval_ = self.quiescence(board, alpha, beta, True, depth + 1)
+                board.pop_move_in_place(move_info)
+
+                min_eval = min(min_eval, eval_)
+                beta = min(beta, eval_)
                 if beta <= alpha:
                     break
             return min_eval
@@ -322,11 +353,11 @@ class ChessAI:
     def is_game_over(self, board):
         return board.game_rules.is_checkmate('white') or board.game_rules.is_checkmate('black') or board.game_rules.is_stalemate('white')
 
-    def evaluate_board(self, board):
-        if self.is_checkmate(board, True):
-            return float('-inf')
-        if self.is_checkmate(board, False):
-            return float('inf')
+    def evaluate_board(self, board, depth = 0):
+        if board.game_rules.is_checkmate('white'):
+            return -(999999) + depth
+        if board.game_rules.is_checkmate('black'):
+            return 999999 - depth
 
         score = 0
         w_bishops = 0
@@ -544,3 +575,17 @@ class ChessAI:
                 if piece and piece.type == 'king' and piece.color == color:
                     return (row, col)
         return None
+    
+    def board_to_string(self, board):
+        s = []
+        for row in range(8):
+            for col in range(8):
+                piece = board.get_piece((row, col))
+                if piece:
+                    s.append(piece.color[0].upper() if piece.color == 'white' else piece.color[0].lower())
+                    s.append(piece.type[0])  # e.g. 'k' for king, 'q' for queen, etc
+                else:
+                    s.append('.')
+        # add side to move
+        s.append(board.game_state.get_current_turn()[0])
+        return ''.join(s)

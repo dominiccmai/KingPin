@@ -211,3 +211,60 @@ class ChessBoard:
         new_board.last_double_pawn_move = copy.deepcopy(self.last_double_pawn_move)
 
         return new_board
+    
+    def push_move_in_place(self, start, end):
+        """
+        Move the piece from start to end WITHOUT switching turn or logging.
+        Returns a dictionary storing enough info to reverse (pop) the move:
+        - 'captured_piece': the piece that was on 'end', if any
+        - 'start': original start coords
+        - 'end': end coords
+        - 'moved_piece': reference to the piece that moved
+        - 'old_has_moved': the moved_piece.has_moved before the move
+        Handle promotions, but not logging, turn switching, etc.
+        """
+
+        # Gather info
+        moved_piece = self.board[start[0]][start[1]]
+        captured_piece = self.board[end[0]][end[1]]
+
+        move_info = {
+            'start': start,
+            'end': end,
+            'moved_piece': moved_piece,
+            'captured_piece': captured_piece,
+            'old_has_moved': moved_piece.has_moved,
+        }
+
+        # Perform the move
+        self.board[end[0]][end[1]] = moved_piece
+        self.board[start[0]][start[1]] = None
+        moved_piece.has_moved = True
+
+        # Handle pawn promotion if needed
+        if moved_piece.type == 'pawn' and (end[0] == 0 or end[0] == 7):
+            # We'll store the old type so we can undo it
+            move_info['old_type'] = moved_piece.type
+            moved_piece.type = 'queen'
+
+        return move_info
+    
+    def pop_move_in_place(self, move_info):
+        """
+        Reverse the move stored in 'move_info'.
+        """
+        start = move_info['start']
+        end = move_info['end']
+        moved_piece = move_info['moved_piece']
+        captured_piece = move_info['captured_piece']
+
+        # Undo the move
+        self.board[start[0]][start[1]] = moved_piece
+        self.board[end[0]][end[1]] = captured_piece
+
+        # Restore has_moved
+        moved_piece.has_moved = move_info['old_has_moved']
+
+        # Undo promotion if it happened
+        if 'old_type' in move_info:
+            moved_piece.type = move_info['old_type']
