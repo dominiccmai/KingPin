@@ -107,6 +107,8 @@ class ChessAI:
         best_move = None
         best_value = float('-inf') if self.color == 'white' else float('inf')
 
+        search_board = board.copy()
+
         # Check opening book
         if len(board.move_history) < 2:
             for opening in self.opening_book:
@@ -121,25 +123,25 @@ class ChessAI:
         # Iterative deepening
         try:
             # Start with depth 1 and increase
-            for depth in range(1, 5):  # Limit maximum depth to 4
+            for depth in range(1, 5):
                 if self.is_time_up():
                     break
                 
-                search_board = board.copy()
-
                 current_move = self.minimax(search_board, depth, float('-inf'), float('inf'), self.color == 'white', True)
 
                 if current_move is not None and not self.is_time_up():
-                    # Test if move is valid before accepting it
-                    test_board = board.copy()
-                    if test_board.move_piece(current_move[0], current_move[1], log=False):
-                        best_move = current_move
-                        print(f"Depth {depth}: Found move {current_move} with value {best_value}")
-                    else:
-                        print(f"Depth {depth}: Invalid move found {current_move}")
+                    best_move = current_move
+                    print(f"Depth {depth}: Found move {current_move}")
 
         except TimeoutError:
             pass
+
+        if best_move:
+            test_board = board.copy()
+            if not test_board.move_piece(best_move[0], best_move[1], log=False):
+                # If it’s invalid, we can fallback to something else
+                print(f"AI's final move {best_move} is invalid in real board!")
+                best_move = None
         
         if best_move:
             print(f"Final chosen move: {best_move}")

@@ -213,16 +213,6 @@ class ChessBoard:
         return new_board
     
     def push_move_in_place(self, start, end):
-        """
-        Move the piece from start to end WITHOUT switching turn or logging.
-        Returns a dictionary storing enough info to reverse (pop) the move:
-        - 'captured_piece': the piece that was on 'end', if any
-        - 'start': original start coords
-        - 'end': end coords
-        - 'moved_piece': reference to the piece that moved
-        - 'old_has_moved': the moved_piece.has_moved before the move
-        Handle promotions, but not logging, turn switching, etc.
-        """
 
         # Gather info
         moved_piece = self.board[start[0]][start[1]]
@@ -234,12 +224,24 @@ class ChessBoard:
             'moved_piece': moved_piece,
             'captured_piece': captured_piece,
             'old_has_moved': moved_piece.has_moved,
+
+            'old_turn': self.game_state.get_current_turn(),
+
+            'old_move_count': self.game_state.get_move_count(),
+
+            'old_last_double': self.last_double_pawn_move,
         }
+
 
         # Perform the move
         self.board[end[0]][end[1]] = moved_piece
         self.board[start[0]][start[1]] = None
         moved_piece.has_moved = True
+
+        if moved_piece.type == 'pawn' and abs(start[0] - end[0]) == 2:
+            self.last_double_pawn_move = (end[0], end[1])
+        else:
+            self.last_double_pawn_move = None
 
         # Handle pawn promotion if needed
         if moved_piece.type == 'pawn' and (end[0] == 0 or end[0] == 7):
@@ -247,24 +249,26 @@ class ChessBoard:
             move_info['old_type'] = moved_piece.type
             moved_piece.type = 'queen'
 
+        self.game_state.switch_turn()
+
         return move_info
     
     def pop_move_in_place(self, move_info):
         """
         Reverse the move stored in 'move_info'.
         """
-        start = move_info['start']
-        end = move_info['end']
-        moved_piece = move_info['moved_piece']
-        captured_piece = move_info['captured_piece']
+        self.board[move_info['start'][0]][move_info['start'][1]] = move_info['moved_piece']
+        self.board[move_info['end'][0]][move_info['end'][1]] = move_info['captured_piece']
 
         # Undo the move
-        self.board[start[0]][start[1]] = moved_piece
-        self.board[end[0]][end[1]] = captured_piece
+        move_info['moved_piece'].has_moved = move_info['old_has_moved']
+
+        if 'old_type' in move_info:
+            move_info['moved_piece'].type = move_info['old_type']
 
         # Restore has_moved
-        moved_piece.has_moved = move_info['old_has_moved']
+        self.last_double_pawn_move = move_info['old_last_double']
 
         # Undo promotion if it happened
-        if 'old_type' in move_info:
-            moved_piece.type = move_info['old_type']
+        self.game_state.current_turn = move_info['old_turn']
+        self.game_state.move_count = move_info['old_move_count']

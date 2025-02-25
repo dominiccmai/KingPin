@@ -5,7 +5,9 @@ class ChessPiece:
         self.has_moved = False  # For pawns, kings, and rooks (castling)
 
     def copy(self):
-        return ChessPiece(self.color, self.type)
+        new_piece = ChessPiece(self.color, self.type)
+        new_piece.has_moved = self.has_moved
+        return new_piece
     
     def __repr__(self):
         return f'{self.color[0]}{self.type[0]}'
