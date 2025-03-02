@@ -100,7 +100,7 @@ class ChessAI:
 
         self.transposition_table = {}
 
-    def get_best_move(self, board, max_time=3):
+    def get_best_move(self, board, max_time):
         self.start_time = time.time()
         self.max_time = max_time
         self.nodes = 0
@@ -132,6 +132,9 @@ class ChessAI:
                 if current_move is not None and not self.is_time_up():
                     best_move = current_move
                     print(f"Depth {depth}: Found move {current_move}")
+
+                    piece_at_start = search_board.get_piece(current_move[0])
+                    print(f"[DEBUG] That move uses piece={piece_at_start}")
 
         except TimeoutError:
             pass
